@@ -17,6 +17,8 @@ class Config:
 
     FAST_API_SECRET_KEYS = json.loads(os.getenv("FAST_API_SECRET_KEYS", "[]"))
     ALLOWED_ORIGINS = json.loads(os.getenv("ALLOWED_ORIGINS", "[]"))
+    if domain := os.getenv("DOMAIN"):
+        ALLOWED_ORIGINS = ALLOWED_ORIGINS + [domain]
     FAST_API_PORT = int(os.getenv("FAST_API_PORT", "8000"))
     FAST_API_ADDRESS = os.getenv("FAST_API_ADDRESS", "0.0.0.0")
 

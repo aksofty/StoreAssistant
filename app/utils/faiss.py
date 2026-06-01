@@ -53,8 +53,10 @@ async def get_embeddings(client_id: str, client_secret: str, scope: str = "GIGAC
 
 
 async def faiss_search(query: str, store, max_score: float = 300.0, k: int = 3) -> list[str]:
+    if store is None:
+        return []
     # 1. Асинхронный поиск в FAISS
-    docs_with_scores = await store.asimilarity_search_with_score(query, k=k)  
+    docs_with_scores = await store.asimilarity_search_with_score(query, k=k)
     #print(docs_with_scores)
     if not docs_with_scores:
         return []
