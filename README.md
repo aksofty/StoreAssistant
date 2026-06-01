@@ -209,12 +209,14 @@ DOMAIN=assistant.example2.ru
 **Запуск конкретного клиента:**
 
 ```bash
-docker compose \
+REPO_DIR=/opt/StoreAssistant docker compose \
   -f /opt/StoreAssistant/docker-compose.yml \
   --env-file /opt/clients/example/.env \
   --project-directory /opt/clients/example \
   up -d --build
 ```
+
+> `REPO_DIR` указывает Docker, где находится `Dockerfile`. Нужно передавать явно, потому что `--project-directory` меняет базовый путь для сборки на директорию клиента.
 
 Traefik автоматически обнаружит новый контейнер и выпустит SSL-сертификат для домена из `DOMAIN`.
 
@@ -373,7 +375,7 @@ mkdir -p /opt/traefik
 ### 6. Клонирование репозитория
 
 ```bash
-git clone https://github.com/your-org/StoreAssistant.git /opt/StoreAssistant
+git clone https://github.com/aksofty/StoreAssistant.git /opt/StoreAssistant
 ```
 
 ### 7. Настройка Traefik
@@ -397,22 +399,22 @@ docker compose logs traefik
 
 ```bash
 # Создать директорию клиента
-mkdir -p /opt/clients/myclient/volumes
+mkdir -p /opt/clients/example/volumes
 
 # Создать .env
-nano /opt/clients/myclient/.env
+nano /opt/clients/example/.env
 ```
 
 Заполнить `.env`:
 
 ```env
-CLIENT_ID=myclient
-PORT=8080
-DOMAIN=assistant.myclient.ru
+CLIENT_ID=example
+PORT=8000
+DOMAIN=assistant.example.ru
 
 GIGACHAT_CREDENTIALS=<токен>
 FAST_API_SECRET_KEYS=["секретный_ключ"]
-ALLOWED_ORIGINS=["https://myclient.ru"]
+ALLOWED_ORIGINS=["https://example.ru"]
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=надёжный_пароль
@@ -422,10 +424,10 @@ ADMIN_SECRET_KEY=случайная_строка_32_символа
 Запустить:
 
 ```bash
-docker compose \
+REPO_DIR=/opt/StoreAssistant docker compose \
   -f /opt/StoreAssistant/docker-compose.yml \
-  --env-file /opt/clients/myclient/.env \
-  --project-directory /opt/clients/myclient \
+  --env-file /opt/clients/example/.env \
+  --project-directory /opt/clients/example \
   up -d --build
 ```
 

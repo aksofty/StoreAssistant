@@ -27,7 +27,7 @@ for client_dir in "${client_dirs[@]}"; do
     client_name="$(basename "$client_dir")"
     echo "==> Updating $client_name..."
 
-    docker compose \
+    REPO_DIR="$SCRIPT_DIR" docker compose \
         -f "$COMPOSE_FILE" \
         --env-file "$env_file" \
         --project-directory "$client_dir" \

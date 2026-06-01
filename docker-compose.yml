@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    build: ${REPO_DIR:-.}
     image: store-assistant-${CLIENT_ID}:latest
     container_name: store-assistant-${CLIENT_ID}
     restart: unless-stopped
