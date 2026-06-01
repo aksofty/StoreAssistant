@@ -1,0 +1,596 @@
+/* RAG Widget */
+
+#rag-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  --rag-primary: #6366f1;
+  --rag-secondary: #8b5cf6;
+}
+
+/* ===================== Toggle button ===================== */
+#rag-toggle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--rag-primary), var(--rag-secondary));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--rag-primary) 45%, transparent);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+  position: relative;
+  color: #fff;
+  outline: none;
+}
+
+#rag-toggle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px color-mix(in srgb, var(--rag-primary) 55%, transparent);
+}
+
+#rag-toggle:active { transform: scale(0.95); }
+
+#rag-toggle svg {
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#rag-icon-close {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.7);
+}
+
+#rag-toggle.rag-active #rag-icon-chat {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.7);
+}
+
+#rag-toggle.rag-active #rag-icon-close {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+/* ===================== Chat window ===================== */
+#rag-window {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  width: 360px;
+  max-height: 540px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(16px) scale(0.96);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transform-origin: bottom right;
+}
+
+#rag-window.rag-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+/* Header */
+#rag-header {
+  background: linear-gradient(135deg, var(--rag-primary), var(--rag-secondary));
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+#rag-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#rag-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#rag-avatar svg { width: 20px; height: 20px; color: #fff; }
+
+#rag-avatar .rag-avatar-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+#rag-name {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+#rag-status {
+  font-size: 12px;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+#rag-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 2px rgba(74,222,128,0.3);
+}
+
+#rag-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.8);
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+  outline: none;
+}
+
+#rag-close-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.15);
+}
+
+#rag-close-btn svg { width: 18px; height: 18px; }
+
+/* Messages */
+#rag-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+  background: #f8f9fc;
+}
+
+#rag-messages::-webkit-scrollbar { width: 4px; }
+#rag-messages::-webkit-scrollbar-track { background: transparent; }
+#rag-messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+/* Message rows */
+.rag-msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  max-width: 100%;
+}
+
+.rag-msg-row.rag-msg-visible { opacity: 1; transform: translateY(0); }
+.rag-msg-user { flex-direction: row-reverse; }
+
+.rag-msg-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--rag-primary), var(--rag-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.rag-msg-avatar svg { width: 14px; height: 14px; color: #fff; }
+
+.rag-msg-avatar .rag-avatar-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.rag-msg-bubble {
+  max-width: 82%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rag-msg-bot .rag-msg-bubble .rag-msg-text {
+  background: #fff;
+  color: #1f2937;
+  border-radius: 16px 16px 16px 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.rag-msg-user .rag-msg-bubble .rag-msg-text {
+  background: linear-gradient(135deg, var(--rag-primary), var(--rag-secondary));
+  color: #fff;
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rag-primary) 30%, transparent);
+  margin-left: auto;
+}
+
+.rag-msg-text {
+  padding: 10px 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* Кликабельные ссылки в тексте сообщений */
+.rag-link {
+  color: var(--rag-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.rag-msg-user .rag-link {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rag-link:hover {
+  opacity: 0.8;
+}
+
+/* Подсказка о товарах (вместо карточек на десктопе) */
+.rag-offers-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--rag-primary);
+  font-weight: 500;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--rag-primary) 12%, white);
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.rag-offers-hint svg { flex-shrink: 0; fill: var(--rag-primary); }
+
+/* Typing indicator */
+.rag-typing {
+  background: #fff !important;
+  border-radius: 16px 16px 16px 4px !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.rag-typing span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rag-primary) 45%, white);
+  animation: rag-bounce 1.2s infinite;
+}
+
+.rag-typing span:nth-child(2) { animation-delay: 0.2s; }
+.rag-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes rag-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
+}
+
+/* Inline offer cards (mobile) */
+.rag-offers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.rag-offer-card {
+  display: flex;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #f0f0f5;
+}
+
+.rag-offer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+}
+
+.rag-offer-img { width: 80px; flex-shrink: 0; background: #f3f4f6; overflow: hidden; }
+.rag-offer-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.rag-offer-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rag-offer-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rag-offer-price { font-size: 13px; font-weight: 700; color: var(--rag-primary); }
+
+.rag-offer-desc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Input area */
+#rag-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #f0f0f5;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+#rag-input {
+  flex: 1;
+  resize: none;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  background: #f8f9fc;
+  color: #1f2937;
+  transition: border-color 0.2s, background 0.2s;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+#rag-input:focus { border-color: var(--rag-primary); background: #fff; }
+#rag-input::placeholder { color: #9ca3af; }
+
+#rag-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--rag-primary), var(--rag-secondary));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--rag-primary) 35%, transparent);
+  outline: none;
+}
+
+#rag-send:hover:not(:disabled) { transform: scale(1.07); box-shadow: 0 4px 14px color-mix(in srgb, var(--rag-primary) 45%, transparent); }
+#rag-send:active:not(:disabled) { transform: scale(0.95); }
+#rag-send:disabled { opacity: 0.5; cursor: default; }
+#rag-send svg { width: 18px; height: 18px; }
+
+/* ===================== Catalog (левее чата, desktop only) ===================== */
+#rag-catalog {
+  /* Позиционируется внутри #rag-widget, левее окна чата */
+  position: absolute;
+  bottom: 70px;          /* та же высота что у #rag-window */
+  right: 372px;          /* 360px (ширина чата) + 12px зазор */
+  z-index: 999998;
+  width: 320px;
+  max-height: 540px;     /* совпадает с max-height чата */
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.07);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  opacity: 0;
+  transform: translateX(12px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
+  transform-origin: bottom right;
+}
+
+#rag-catalog.rag-catalog-open {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: all;
+}
+
+/* На экранах уже 1024px каталог не показывается */
+@media (max-width: 1023px) {
+  #rag-catalog { display: none !important; }
+}
+
+#rag-catalog-header {
+  background: linear-gradient(135deg, var(--rag-primary), var(--rag-secondary));
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+#rag-catalog-title {
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#rag-catalog-title svg { fill: rgba(255,255,255,0.9); }
+
+#rag-catalog-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.8);
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  outline: none;
+  line-height: 1;
+}
+
+#rag-catalog-close:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.15);
+}
+
+/* Скролл-список товаров */
+#rag-catalog-grid {
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;          /* занимает всё оставшееся место, давая скролл */
+}
+
+#rag-catalog-grid::-webkit-scrollbar { width: 4px; }
+#rag-catalog-grid::-webkit-scrollbar-track { background: transparent; }
+#rag-catalog-grid::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+/* Catalog card */
+.rag-cat-card {
+  display: flex;
+  flex-direction: row;   /* горизонтальный layout: картинка слева */
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid #ebebf0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  align-items: stretch;
+}
+
+.rag-cat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* Картинка — фиксированная ширина, высота подстраивается под контент */
+.rag-cat-img {
+  width: 110px;
+  flex-shrink: 0;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.rag-cat-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.rag-cat-card:hover .rag-cat-img img { transform: scale(1.05); }
+
+.rag-cat-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rag-cat-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  line-height: 1.35;
+  /* Без ограничения строк — полное название видно */
+}
+
+.rag-cat-price {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rag-primary);
+  flex-shrink: 0;
+}
+
+.rag-cat-desc {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rag-cat-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rag-primary);
+  margin-top: auto;
+  padding-top: 4px;
+  letter-spacing: 0.01em;
+}
+
+/* ===================== Mobile ===================== */
+@media (max-width: 440px) {
+  #rag-window {
+    width: calc(100vw - 32px);
+    right: -8px;
+  }
+}

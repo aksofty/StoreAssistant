@@ -1,0 +1,72 @@
+# --- Python Кэш и Байт-код ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+
+# --- Виртуальные окружения ---
+.venv/
+venv/
+ENV/
+env/
+/bin/
+/include/
+/lib/
+/lib64/
+
+# --- IDE и Редакторы (PyCharm, VSCode) ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Секреты и Локальная конфигурация ---
+.env
+.env.local
+.env.*.local
+config.json
+secret.key
+*.session
+
+# --- Зависимости и Установка ---
+*.egg-info/
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Тесты и Документация ---
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.cache
+docs/_build/
+
+# --- ОС файлы ---
+.DS_Store
+Thumbs.db
+
+# others
+!!!TRASH
+PROMPT.md
+_FILES
+_data
+_logs
+test.py
+*.log
+*.sqlite3
+*.db
+del_*

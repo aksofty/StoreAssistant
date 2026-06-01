@@ -1,0 +1,52 @@
+{% extends "sqladmin/list.html" %}
+
+{% block content %}
+    {{ super() }}
+{% endblock %}
+
+{% block tail %}
+    {{ super() }}
+    <style>
+        /* Делаем курсор указателем при наведении на строку, исключая шапку таблицы */
+        table.table tbody tr { 
+            cursor: pointer; 
+        }
+        i.fa-eye, .form-check-input {display: none;}
+        /* Опционально: подсвечиваем строку при наведении для лучшего UX */
+        table.table tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.02) !important;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Находим все строки внутри тела таблицы
+            const rows = document.querySelectorAll("table.table tbody tr");
+            
+            rows.forEach(row => {
+                row.addEventListener("click", function(event) {
+                    // Проверяем, не кликнул ли пользователь на чекбокс, кнопку удаления или другую ссылку внутри строки
+                    const clickTarget = event.target;
+
+
+                    if (
+                        clickTarget.tagName === 'I' || 
+                        clickTarget.tagName === 'A' || 
+                        clickTarget.tagName === 'BUTTON' || 
+                        clickTarget.closest('input[type="checkbox"]')) {
+                        return;
+                    }
+
+                    // Ищем ссылку на редактирование в текущей строке
+                    // SQLAdmin использует иконку карандаша fa-pencil или слово Edit в теге <a>
+                    const editLink = row.querySelector("a[href*='/edit/']");
+                    
+                    if (editLink) {
+                        // Переходим по адресу ссылки редактирования
+                        window.location.href = editLink.href;
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}
