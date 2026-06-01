@@ -1,0 +1,28 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: unless-stopped
+    # Создаёт acme.json с нужными правами перед запуском
+    entrypoint:
+      - sh
+      - -c
+      - |
+        touch /etc/traefik/acme/acme.json
+        chmod 600 /etc/traefik/acme/acme.json
+        traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./acme:/etc/traefik/acme
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    name: traefik-public
+    driver: bridge
+    attachable: true

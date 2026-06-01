@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    image: store-assistant-${CLIENT_ID}:latest
+    container_name: store-assistant-${CLIENT_ID}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - './volumes/data:/app/data'
+      - './volumes/logs:/app/logs'
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      # HTTPS router
+      - "traefik.http.routers.${CLIENT_ID}.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${CLIENT_ID}.entrypoints=websecure"
+      - "traefik.http.routers.${CLIENT_ID}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${CLIENT_ID}.loadbalancer.server.port=${PORT}"
+      # HTTP -> HTTPS redirect
+      - "traefik.http.routers.${CLIENT_ID}-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${CLIENT_ID}-http.entrypoints=web"
+      - "traefik.http.routers.${CLIENT_ID}-http.middlewares=${CLIENT_ID}-https-redirect"
+      - "traefik.http.middlewares.${CLIENT_ID}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.${CLIENT_ID}-https-redirect.redirectscheme.permanent=true"
+
+networks:
+  traefik-public:
+    external: true
