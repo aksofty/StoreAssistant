@@ -24,7 +24,11 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 logger.add(CLIENT_LOG_FILE, rotation="1 MB")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url="/docs" if Config.DEBUG else None,
+    redoc_url="/redoc" if Config.DEBUG else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

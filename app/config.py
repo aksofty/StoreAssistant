@@ -15,6 +15,7 @@ class Config:
     GIGACHAT_CREDENTIALS = os.getenv("GIGACHAT_CREDENTIALS", "")
 
 
+    DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     FAST_API_SECRET_KEYS = json.loads(os.getenv("FAST_API_SECRET_KEYS", "[]"))
     ALLOWED_ORIGINS = json.loads(os.getenv("ALLOWED_ORIGINS", "[]"))
     if domain := os.getenv("DOMAIN"):
