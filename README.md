@@ -134,6 +134,7 @@ nano .env
 Минимальный набор переменных в `.env`:
 
 ```env
+REPO_DIR=/opt/StoreAssistant
 CLIENT_ID=example
 PORT=8000
 DOMAIN=assistant.example.ru
@@ -408,6 +409,7 @@ nano /opt/clients/example/.env
 Заполнить `.env`:
 
 ```env
+REPO_DIR=/opt/StoreAssistant
 CLIENT_ID=example
 PORT=8000
 DOMAIN=assistant.example.ru
