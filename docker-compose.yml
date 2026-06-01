@@ -1,8 +1,8 @@
 services:
   app:
-    build: ${REPO_DIR:-.}
-    image: store-assistant-${CLIENT_ID}:latest
-    container_name: store-assistant-${CLIENT_ID}
+    build: .
+    image: store-assistant:latest
+    container_name: store-assistant
     restart: unless-stopped
     env_file: .env
     volumes:
@@ -13,16 +13,16 @@ services:
     labels:
       - "traefik.enable=true"
       # HTTPS router
-      - "traefik.http.routers.${CLIENT_ID}.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.${CLIENT_ID}.entrypoints=websecure"
-      - "traefik.http.routers.${CLIENT_ID}.tls.certresolver=letsencrypt"
-      - "traefik.http.services.${CLIENT_ID}.loadbalancer.server.port=${PORT}"
+      - "traefik.http.routers.store-assistant.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.store-assistant.entrypoints=websecure"
+      - "traefik.http.routers.store-assistant.tls.certresolver=letsencrypt"
+      - "traefik.http.services.store-assistant.loadbalancer.server.port=${PORT}"
       # HTTP -> HTTPS redirect
-      - "traefik.http.routers.${CLIENT_ID}-http.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.${CLIENT_ID}-http.entrypoints=web"
-      - "traefik.http.routers.${CLIENT_ID}-http.middlewares=${CLIENT_ID}-https-redirect"
-      - "traefik.http.middlewares.${CLIENT_ID}-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.${CLIENT_ID}-https-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.store-assistant-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.store-assistant-http.entrypoints=web"
+      - "traefik.http.routers.store-assistant-http.middlewares=store-assistant-https-redirect"
+      - "traefik.http.middlewares.store-assistant-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.store-assistant-https-redirect.redirectscheme.permanent=true"
 
 networks:
   traefik-public:
