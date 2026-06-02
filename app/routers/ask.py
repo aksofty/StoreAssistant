@@ -1,7 +1,6 @@
 
 import json
 from typing import Annotated
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from loguru import logger
@@ -27,8 +26,7 @@ def check_access(request: Request, fast_api_key: Annotated[str | None, Header()]
         return
 
     origin = request.headers.get("origin", "")
-    domain = urlparse(origin).hostname or ""
-    if domain in Config.ALLOWED_ORIGINS:
+    if origin in Config.ALLOWED_ORIGINS:
         return
 
     if fast_api_key not in Config.FAST_API_SECRET_KEYS:
