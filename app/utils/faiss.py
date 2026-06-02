@@ -86,11 +86,11 @@ async def faiss_search(query: str, store, max_score: float = 300.0, k: int = 3) 
     return faqs
 
 
-async def process_single_faq_source(source_db_obj: Any, cache_dir: str, credentials: str, cache_time: int = 2952000) -> Dict[str, Any] | None:
+async def process_single_faq_source(source_db_obj: Any, cache_dir: str, credentials: str, cache_time: int = 2952000) -> tuple[Dict[str, Any], bool] | None:
     """Обрабатывает один источник: скачивает, парсит и сохраняет в SQLite напрямую."""
     source = SourceFaqRead.model_validate(source_db_obj).model_dump()
     file_path = get_rag_cache_path(source=source, cache_dir=cache_dir)
-    
+
     try:
         downloader = HTTPDownloader(
             url=source["url"],
@@ -98,12 +98,12 @@ async def process_single_faq_source(source_db_obj: Any, cache_dir: str, credenti
             cache_time=cache_time
         )
         update_source = await downloader.run()
-        
+
         if update_source:
 
             faq_list = await parse_faq_html(
-                file_path=file_path, 
-                question_selector=source.get("selector_question"), 
+                file_path=file_path,
+                question_selector=source.get("selector_question"),
                 answer_selector=source.get("selector_answer"),
                 credentials=credentials
             )
@@ -115,40 +115,48 @@ async def process_single_faq_source(source_db_obj: Any, cache_dir: str, credenti
                         await delete_faqs_by_source(session=session, source_id=source["id"])
                         # Записываем новое
                         await add_faqs(session=session, source_id=source["id"], faq_list=faq_list)
-                            
+
                 logger.info(f"Источник {source['id']} обновлен в SQLite. Добавлено {len(faq_list)} вопросов.")
             else:
                 logger.warning(f"Файл обновился, но вопросов не найдено. База не очищена.")
-                    
-        return source
-        
+
+        return source, update_source
+
     except Exception as e:
         logger.error(f"Ошибка при обработке источника {source.get('url')}: {e}")
         return None
 
-async def init_faq_sources(credentials: str, cache_time: int = 2592000) -> List[Dict[str, Any]]:
+async def init_faq_sources(credentials: str, cache_time: int = 2592000) -> tuple[List[Dict[str, Any]], bool]:
     async with AsyncSessionLocal() as session:
         db_sources = await get_faq_sources(session=session)
-        
+
     if not db_sources:
         logger.warning("Faq каталоги не найдены")
-        return []
+        return [], False
 
     tasks = [process_single_faq_source(db_source, CLIENT_CACHE_DIR, credentials, cache_time=cache_time) for db_source in db_sources]
     results = await asyncio.gather(*tasks)
-    
-    faq_sources = [source for source in results if source is not None]
+
+    faq_sources = []
+    any_updated = False
+    for result in results:
+        if result is None:
+            continue
+        source, updated = result
+        faq_sources.append(source)
+        if updated:
+            any_updated = True
 
     if faq_sources:
         logger.info("Faq каталоги подготовлены")
     else:
         logger.warning("Ни один Faq каталог не был успешно подготовлен")
-        
-    return faq_sources
+
+    return faq_sources, any_updated
 
 
 
-async def init_faqs_store(faiss_dir, embeddings, batch_size = 100, cache_time=2592000):
+async def init_faqs_store(faiss_dir, embeddings, batch_size = 100, cache_time=2592000, force_update=False):
     async with AsyncSessionLocal() as session:
         db_faqs = await get_faqs(session=session)
         
@@ -164,14 +172,14 @@ async def init_faqs_store(faiss_dir, embeddings, batch_size = 100, cache_time=25
     index_path = os.path.join(faiss_dir, "idx_faqs")
     index_exists = os.path.exists(index_path)
 
-    if not index_exists:
-        force_update = True
+    if not index_exists or force_update:
+        start_update = True
     else:
         file_age = time.time() - os.path.getmtime(index_path)
-        force_update = file_age > cache_time
+        start_update = file_age > cache_time
 
 
-    if force_update:
+    if start_update:
         if not docs:
             logger.warning("Нет документов для создания индекса FAISS.")
             return None

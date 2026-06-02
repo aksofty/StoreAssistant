@@ -27,9 +27,9 @@ async def _sync_loop(
             assistant.offers_store = updated_offer_store
             logger.info("Плановая синхронизация офферов завершена.")
 
-            await init_faq_sources(credentials=credentials, cache_time=faq_cache_time)
-            update_faqs_store = await init_faqs_store(faiss_dir, embeddings, cache_time=faq_cache_time)
-            assistant.faqs_store = update_faqs_store
+            _, force_update_faq_store = await init_faq_sources(credentials=credentials, cache_time=faq_cache_time)
+            updated_faqs_store = await init_faqs_store(faiss_dir, embeddings, cache_time=faq_cache_time, force_update=force_update_faq_store)
+            assistant.faqs_store = updated_faqs_store
             logger.info("Плановая синхронизация faq завершена.")
 
         except Exception as e:
@@ -49,8 +49,8 @@ async def lifespan(app: FastAPI):
     offers_store = await init_offers_store(CLIENT_FAISS_DIR, embeddings, force_update=False)
 
     #Инициализация faq источников
-    await init_faq_sources(credentials=Config.GIGACHAT_CREDENTIALS)
-    faqs_store = await init_faqs_store(CLIENT_FAISS_DIR, embeddings)
+    _, force_update_faq_store = await init_faq_sources(credentials=Config.GIGACHAT_CREDENTIALS)
+    faqs_store = await init_faqs_store(CLIENT_FAISS_DIR, embeddings, force_update=force_update_faq_store)
   
     
 
