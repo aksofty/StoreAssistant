@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VOLUMES_DIR="$SCRIPT_DIR/../StoreAssistant_volumes/data"
 
 if [ -z "$1" ]; then
-  echo "Usage: $0 <CLIENT_ID>"
+  echo "Usage: $0 <CLIENT_ID> [--build]"
   exit 1
 fi
 
@@ -17,7 +17,12 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
+BUILD_FLAG=""
+if [ "$2" = "--build" ]; then
+  BUILD_FLAG="--build"
+fi
+
 echo "==> Starting $CLIENT_ID..."
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" --env-file "$ENV_FILE" up -d
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" --env-file "$ENV_FILE" up -d $BUILD_FLAG
 
 echo "==> Done."
