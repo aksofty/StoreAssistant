@@ -5,6 +5,7 @@ from typing import List
 import aiofiles
 from bs4 import BeautifulSoup
 from langchain_gigachat import GigaChat
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.utils.html_cleaner import HTMLCleaner
@@ -71,12 +72,12 @@ async def parse_faq_html(
         return []
     
     if not question_selector or not credentials:
-        print(question_selector, credentials)
+        #print(question_selector, credentials)
         return []
 
     # Если передан только один селектор генерируем faq с помощью ИИ
     if question_selector and not answer_selector:
-        print("Создание faq с помощью ИИ")
+        logger.info("Создание faq с помощью ИИ")
         return await create_faqs_from_html(file_path, credentials=credentials, selector=question_selector)
 
     # Если переданы оба селектора парсим html

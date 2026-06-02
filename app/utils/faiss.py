@@ -6,7 +6,7 @@ import time
 from typing import Any, Dict, List
 from loguru import logger
 from app import CLIENT_CACHE_DIR
-from app.cruds.faq import add_faqs, delete_faqs_by_source, get_faqs, get_faqs_by_ids
+from app.cruds.faq import add_faqs, delete_faqs_by_source, get_faqs, get_faqs_by_ids, get_faqs_by_source_ids
 from app.cruds.offer import get_offers, get_offers_by_ids, sync_offers
 from app.cruds.source_faq import get_faq_sources
 from app.cruds.source_yml import get_yml_sources
@@ -126,94 +126,128 @@ async def process_single_faq_source(source_db_obj: Any, cache_dir: str, credenti
         logger.error(f"Ошибка при обработке источника {source.get('url')}: {e}")
         return None
 
-async def init_faq_sources(credentials: str, cache_time: int = 2592000) -> tuple[List[Dict[str, Any]], bool]:
+async def init_faq_sources(credentials: str, cache_time: int = 2592000) -> tuple[List[Dict[str, Any]], List[Any]]:
     async with AsyncSessionLocal() as session:
         db_sources = await get_faq_sources(session=session)
 
     if not db_sources:
         logger.warning("Faq каталоги не найдены")
-        return [], False
+        return [], []
 
     tasks = [process_single_faq_source(db_source, CLIENT_CACHE_DIR, credentials, cache_time=cache_time) for db_source in db_sources]
     results = await asyncio.gather(*tasks)
 
     faq_sources = []
-    any_updated = False
+    updated_ids = []
     for result in results:
         if result is None:
             continue
         source, updated = result
         faq_sources.append(source)
         if updated:
-            any_updated = True
+            updated_ids.append(source["id"])
 
     if faq_sources:
         logger.info("Faq каталоги подготовлены")
     else:
         logger.warning("Ни один Faq каталог не был успешно подготовлен")
 
-    return faq_sources, any_updated
+    return faq_sources, updated_ids
 
 
 
-async def init_faqs_store(faiss_dir, embeddings, batch_size = 100, cache_time=2592000, force_update=False):
+async def _build_faqs_index(docs: list, embeddings, batch_size: int, index_path: str) -> FAISS:
+    first_batch = docs[:batch_size]
+    store = await FAISS.afrom_documents(first_batch, embeddings)
+    logger.info(f"Обработано документов: {len(first_batch)}/{len(docs)}")
+
+    for i in range(batch_size, len(docs), batch_size):
+        batch = docs[i : i + batch_size]
+        await store.aadd_documents(batch)
+        logger.info(f"Обработано документов: {min(i + batch_size, len(docs))}/{len(docs)}")
+        await asyncio.sleep(0.5)
+
+    await asyncio.to_thread(store.save_local, index_path)
+    return store
+
+
+async def update_faqs_store(store: FAISS, updated_ids: list, batch_size: int, index_path: str) -> FAISS:
+    updated_ids_set = set(updated_ids)
+    ids_to_delete = [
+        doc_id
+        for doc_id, doc in store.docstore._dict.items()
+        if doc.metadata.get("source_id") in updated_ids_set
+    ]
+    if ids_to_delete:
+        store.delete(ids_to_delete)
+        logger.info(f"Удалено из idx_faqs: {len(ids_to_delete)} документов (source_ids={updated_ids})")
+
     async with AsyncSessionLocal() as session:
-        db_faqs = await get_faqs(session=session)
-        
-    docs = [
+        db_faqs = await get_faqs_by_source_ids(session, updated_ids)
+
+    new_docs = [
         Document(
             page_content=faq_dict.get("question", ""),
-            metadata={"id": faq_dict["id"]}
+            metadata={"id": faq_dict["id"], "source_id": faq_dict["source_id"]},
         )
         for db_faq in db_faqs
         if (faq_dict := FaqRead.model_validate(db_faq).model_dump())
     ]
 
+    if new_docs:
+        for i in range(0, len(new_docs), batch_size):
+            await store.aadd_documents(new_docs[i : i + batch_size])
+            if i > 0:
+                await asyncio.sleep(0.5)
+        logger.info(f"Добавлено в idx_faqs: {len(new_docs)} документов (source_ids={updated_ids})")
+
+    await asyncio.to_thread(store.save_local, index_path)
+    return store
+
+
+async def init_faqs_store(faiss_dir, embeddings, batch_size=100, cache_time=2592000, updated_ids: List[Any] = None):
     index_path = os.path.join(faiss_dir, "idx_faqs")
     index_exists = os.path.exists(index_path)
 
-    if not index_exists or force_update:
+    if updated_ids and index_exists:
+        store = await asyncio.to_thread(
+            FAISS.load_local, index_path, embeddings, allow_dangerous_deserialization=True,
+        )
+        return await update_faqs_store(store, updated_ids, batch_size, index_path)
+
+    # Полное пересоздание или загрузка из кэша
+    if not index_exists:
         start_update = True
     else:
         file_age = time.time() - os.path.getmtime(index_path)
         start_update = file_age > cache_time
 
-
     if start_update:
+        async with AsyncSessionLocal() as session:
+            db_faqs = await get_faqs(session=session)
+
+        docs = [
+            Document(
+                page_content=faq_dict.get("question", ""),
+                metadata={"id": faq_dict["id"], "source_id": faq_dict["source_id"]},
+            )
+            for db_faq in db_faqs
+            if (faq_dict := FaqRead.model_validate(db_faq).model_dump())
+        ]
+
         if not docs:
             logger.warning("Нет документов для создания индекса FAISS.")
             return None
-            
+
         logger.info(f"Создаем новый индекс idx_faqs для {len(docs)} документов...")
-        
-        # 1. Создаем базовый индекс по первой порции (батчу)
-        first_batch = docs[:batch_size]
-        store = await FAISS.afrom_documents(first_batch, embeddings)
-        logger.info(f"Обработано документов: {len(first_batch)}/{len(docs)}")
-        
-        # 2. Добавляем остальные документы батчами по batch_size
-        for i in range(batch_size, len(docs), batch_size):
-            batch = docs[i : i + batch_size]
-            # aadd_documents делает асинхронные запросы к эмбеддингам и добавляет их в FAISS
-            await store.aadd_documents(batch)
-            logger.info(f"Обработано документов: {min(i + batch_size, len(docs))}/{len(docs)}")
-            
-            # Небольшая пауза, чтобы гарантированно не спамить API внешних сервисов
-            await asyncio.sleep(0.5) 
+        return await _build_faqs_index(docs, embeddings, batch_size, index_path)
 
-
-        
-        # 3. Сохраняем готовый индекс на диск
-        await asyncio.to_thread(store.save_local, index_path)
-        return store
-
-    # Загрузка из кэша, если обновление не требуется
     logger.info("Используем кеш idx_faqs")
     store = await asyncio.to_thread(
-        FAISS.load_local, 
-        index_path, 
-        embeddings, 
-        allow_dangerous_deserialization=True
+        FAISS.load_local,
+        index_path,
+        embeddings,
+        allow_dangerous_deserialization=True,
     )
     return store
 

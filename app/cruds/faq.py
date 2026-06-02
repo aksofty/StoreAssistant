@@ -76,6 +76,15 @@ async def get_faqs(session: AsyncSession) -> list[Faq]:
     # Извлекаем чистые объекты модели Faq из результата
     return result.scalars().all()
 
+async def get_faqs_by_source_ids(session: AsyncSession, source_ids: list) -> Sequence[Faq]:
+    """Выбирает все FAQ-записи по списку source_id."""
+    if not source_ids:
+        return []
+    query = select(Faq).where(Faq.source_id.in_(source_ids))
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
 async def get_faqs_by_ids(session: AsyncSession, faq_ids: list[str]) -> Sequence[Faq]:
     """Выбирает из базы данных все товары, чьи offer_id есть в переданном списке."""
     # Если список пустой, сразу возвращаем пустой результат, не делая запрос в БД

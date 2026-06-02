@@ -27,8 +27,8 @@ async def _sync_loop(
             assistant.offers_store = updated_offer_store
             logger.info("Плановая синхронизация офферов завершена.")
 
-            _, force_update_faq_store = await init_faq_sources(credentials=credentials, cache_time=faq_cache_time)
-            updated_faqs_store = await init_faqs_store(faiss_dir, embeddings, cache_time=faq_cache_time, force_update=force_update_faq_store)
+            _, updated_faq_ids = await init_faq_sources(credentials=credentials, cache_time=faq_cache_time)
+            updated_faqs_store = await init_faqs_store(faiss_dir, embeddings, cache_time=faq_cache_time, updated_ids=updated_faq_ids)
             assistant.faqs_store = updated_faqs_store
             logger.info("Плановая синхронизация faq завершена.")
 
@@ -49,8 +49,8 @@ async def lifespan(app: FastAPI):
     offers_store = await init_offers_store(CLIENT_FAISS_DIR, embeddings, force_update=False)
 
     #Инициализация faq источников
-    _, force_update_faq_store = await init_faq_sources(credentials=Config.GIGACHAT_CREDENTIALS)
-    faqs_store = await init_faqs_store(CLIENT_FAISS_DIR, embeddings, force_update=force_update_faq_store)
+    _, updated_faq_ids = await init_faq_sources(credentials=Config.GIGACHAT_CREDENTIALS)
+    faqs_store = await init_faqs_store(CLIENT_FAISS_DIR, embeddings, updated_ids=updated_faq_ids)
   
     
 
