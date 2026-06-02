@@ -1,12 +1,107 @@
 {% extends "sqladmin/layout.html" %}
 {% block content %}
-    
+
+<div class="container-xl">
+  <div class="page-header">
+    <div class="row align-items-center">
+      <div class="col-auto">
+        <h2 class="page-title">Виджет</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h3 class="card-title mb-0">Код для вставки</h3>
+      <button class="btn btn-sm btn-outline-secondary" onclick="copyWidget()" id="copy-btn">
+        Скопировать
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <pre id="widget-code" style="margin:0; padding:1rem 1.25rem; background:#1e1e2e; color:#cdd6f4; font-size:.85rem; border-radius:0 0 4px 4px; overflow-x:auto;"><code>&lt;script
+    src="https://{{ domain }}/static/widget.js"
+    data-name="Онлайн-консультант"
+    data-greeting="Привет! Чем могу помочь?"
+    data-picture="https://example.ru/avatar.png"
+    data-color-primary="#9999CC"
+    data-color-secondary="#AEAED5"&gt;
+&lt;/script&gt;</code></pre>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><h3 class="card-title mb-0">Параметры</h3></div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Атрибут</th>
+            <th>Обязательный</th>
+            <th>По умолчанию</th>
+            <th>Описание</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>src</code></td>
+            <td><span class="badge bg-red">Да</span></td>
+            <td>—</td>
+            <td>URL скрипта. Домен определяет, куда виджет отправляет запросы.</td>
+          </tr>
+          <tr>
+            <td><code>data-name</code></td>
+            <td><span class="badge bg-secondary">Нет</span></td>
+            <td>Ассистент</td>
+            <td>Имя ассистента в заголовке чата.</td>
+          </tr>
+          <tr>
+            <td><code>data-greeting</code></td>
+            <td><span class="badge bg-secondary">Нет</span></td>
+            <td>Здравствуйте! Чем могу помочь?</td>
+            <td>Первое сообщение при отсутствии истории.</td>
+          </tr>
+          <tr>
+            <td><code>data-picture</code></td>
+            <td><span class="badge bg-secondary">Нет</span></td>
+            <td>SVG-иконка</td>
+            <td>URL изображения аватара ассистента.</td>
+          </tr>
+          <tr>
+            <td><code>data-color-primary</code></td>
+            <td><span class="badge bg-secondary">Нет</span></td>
+            <td>#9999CC</td>
+            <td>Основной цвет (кнопка, заголовок, пузырь пользователя).</td>
+          </tr>
+          <tr>
+            <td><code>data-color-secondary</code></td>
+            <td><span class="badge bg-secondary">Нет</span></td>
+            <td>#AEAED5</td>
+            <td>Дополнительный цвет (акценты, hover-состояния).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
     <script
         src="/static/widget.js"
         data-color-primary="#9999CC"
         data-color-secondary="#AEAED5"
         data-name="Онлайн-консультант"
-        data-greeting="Привет! Помогу найти модель самолёта или ответить на твои вопросы 🙂">
-    </script>
+        data-greeting="Привет! Чем могу помочь?">
+      </script>
+
+</div>
+
+<script>
+  function copyWidget() {
+    const code = document.getElementById('widget-code').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'Скопировано!';
+      setTimeout(() => btn.textContent = 'Скопировать', 2000);
+    });
+  }
+</script>
 
 {% endblock %}

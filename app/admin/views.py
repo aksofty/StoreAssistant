@@ -1,5 +1,6 @@
 from sqladmin import ModelView, BaseView, expose
 from wtforms import DecimalField, IntegerField, SelectField, TextAreaField
+from app.config import Config
 from app.cruds.bot_user_message import get_message_history
 from app.database import AsyncSessionLocal
 from app.models.bot_user_message import BotUserMessage
@@ -215,7 +216,7 @@ class ChatAssistantAdmin(BaseView):
             request, 
             #"admin/chat_assistant.html",
             "admin/widget.html",
-            context={"content": Markup(content)}
+            context={"content": Markup(content), "domain": Config.DOMAIN}
         )
     
 
