@@ -11,7 +11,7 @@
   const baseUrl = src.replace(/\/static\/widget\.js.*$/, '');
   const askUrl = baseUrl + '/ask';
   const historyUrl = baseUrl + '/chat_history';
-  const cssUrl = baseUrl + '/static/widget.css';
+  const cssUrl = baseUrl + '/static/widget.css?v=1.0.1';
 
   const ASSISTANT_NAME = currentScript.getAttribute('data-name') || 'Ассистент';
   const ASSISTANT_PICTURE = currentScript.getAttribute('data-picture') || '';
