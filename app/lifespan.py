@@ -9,8 +9,6 @@ from app.database import init_db
 from app.cruds.system_setting import get_int_setting, get_str_setting
 from app.utils.faiss import get_embeddings, init_faq_sources, init_faqs_store, init_offers_store, init_yml_sources, sync_offers_store
 
-_DEFAULT_SYNC_INTERVAL = 3600
-
 
 async def _sync_loop(
         assistant: StoreAssistant,
@@ -19,7 +17,7 @@ async def _sync_loop(
         faiss_dir: str,
 ):
     while True:
-        interval = await get_int_setting("sync.interval", default=_DEFAULT_SYNC_INTERVAL)
+        interval = await get_int_setting("sync.interval", default=3600)
         yml_cache_time = await get_int_setting("faiss.yml.cache_time", default=3600)
         faq_cache_time = await get_int_setting("faiss.faq.cache_time", default=2592000)
         await asyncio.sleep(interval)

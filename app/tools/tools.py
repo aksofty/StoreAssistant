@@ -7,6 +7,8 @@ from app.cruds.system_setting import get_int_setting
 from app.database import AsyncSessionLocal
 from app.cruds.offer import get_offers_by_ids
 from app.schemas.offer import OfferRead
+from app import CLIENT_TOOL_DIR
+from app.tools.loader import load_client_tools
 
 @tool
 async def product_search_rag(query: str, config: RunnableConfig, max_price: float|None = None) -> str:
@@ -50,8 +52,12 @@ async def product_search_rag(query: str, config: RunnableConfig, max_price: floa
 
 
 # Список всех инструментов для привязки к модели
-ALL_TOOLS = [
-   product_search_rag
-]
+_STATIC_TOOLS = [product_search_rag]
+_CLIENT_TOOLS = load_client_tools(CLIENT_TOOL_DIR)
+
+_static_names = {t.name for t in _STATIC_TOOLS}
+_unique_client_tools = [t for t in _CLIENT_TOOLS if t.name not in _static_names]
+
+ALL_TOOLS = _STATIC_TOOLS + _unique_client_tools
 # Мапа для быстрого вызова по имени
 TOOLS_MAP = {t.name: t for t in ALL_TOOLS}
