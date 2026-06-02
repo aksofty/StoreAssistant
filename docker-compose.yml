@@ -4,7 +4,7 @@ services:
     image: store-assistant:latest
     container_name: store-assistant-${CLIENT_ID}
     restart: unless-stopped
-    env_file: ../volumes/data/${CLIENT_ID}/.env
+    env_file: ../StoreAssistant_volumes/data/${CLIENT_ID}/.env
     volumes:
       - '../StoreAssistant_volumes/data:/app/app/_data'
     networks:

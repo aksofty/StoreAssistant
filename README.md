@@ -150,7 +150,7 @@ docker compose --env-file ../volumes/data/mystore/.env up -d --build
 ./update.sh --all
 ```
 
-Скрипт выполняет `git pull` и пересобирает/перезапускает контейнер. Данные в `volumes/` не затрагиваются.
+Скрипт выполняет `git pull` и пересобирает/перезапускает контейнер. Данные в `StoreAssistant_volumes/` не затрагиваются.
 
 ---
 
@@ -160,16 +160,16 @@ docker compose --env-file ../volumes/data/mystore/.env up -d --build
 
 ```bash
 # Статус контейнера
-docker compose --env-file ../volumes/data/mystore/.env ps
+docker compose --env-file ../StoreAssistant_volumes/data/mystore/.env ps
 
 # Логи в реальном времени
-docker compose --env-file ../volumes/data/mystore/.env logs -f
+docker compose --env-file ../StoreAssistant_volumes/data/mystore/.env logs -f
 
 # Перезапустить без пересборки
-docker compose --env-file ../volumes/data/mystore/.env up -d
+docker compose --env-file ../StoreAssistant_volumes/data/mystore/.env up -d
 
 # Остановить
-docker compose --env-file ../volumes/data/mystore/.env down
+docker compose --env-file ../StoreAssistant_volumes/data/mystore/.env down
 ```
 
 ---
@@ -178,7 +178,7 @@ docker compose --env-file ../volumes/data/mystore/.env down
 
 | Переменная | Описание | Пример |
 |---|---|---|
-| `CLIENT_ID` | Идентификатор клиента (имя папки в `volumes/data/`) | `mystore` |
+| `CLIENT_ID` | Идентификатор клиента (имя папки в `StoreAssistant_volumes/data/`) | `mystore` |
 | `PORT` | Порт uvicorn внутри контейнера | `8080` |
 | `DOMAIN` | Домен для SSL и маршрутизации | `assistant.example.ru` |
 | `GIGACHAT_CREDENTIALS` | Base64-токен из личного кабинета GigaChat | `Njc0Zj...` |
@@ -206,7 +206,7 @@ Admin-панель доступна по адресу: `https://<DOMAIN>/admin`
 
 ## Кастомные инструменты
 
-Каждый клиент может определять собственные инструменты для ассистента в файле `volumes/data/{CLIENT_ID}/tools/tools.py`:
+Каждый клиент может определять собственные инструменты для ассистента в файле `StoreAssistant_volumes/data/{CLIENT_ID}/tools/tools.py`:
 
 ```python
 from langchain_core.tools import tool
@@ -267,11 +267,11 @@ docker compose up -d
 ### 6. Настройка и запуск первого клиента
 
 ```bash
-mkdir -p /opt/volumes/data/mystore
-nano /opt/volumes/data/mystore/.env
+mkdir -p /opt/StoreAssistant_volumes/data/mystore
+nano /opt/StoreAssistant_volumes/data/mystore/.env
 
 cd /opt/StoreAssistant
-docker compose --env-file /opt/volumes/data/mystore/.env up -d --build
+docker compose --env-file /opt/StoreAssistant_volumes/data/mystore/.env up -d --build
 ```
 
 ### 7. Проверка
