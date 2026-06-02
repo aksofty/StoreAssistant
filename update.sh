@@ -3,7 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-VOLUMES_DIR="$SCRIPT_DIR/../volumes/data"
+VOLUMES_DIR="$SCRIPT_DIR/../StoreAssistant_volumes/data"
 
 deploy_client() {
   local client_id="$1"

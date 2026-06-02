@@ -136,9 +136,15 @@ docker compose --env-file ../volumes/data/mystore/.env up -d --build
 
 ---
 
-## Обновление
+## Запуск и обновление
 
-Обновить одного клиента:
+Запустить / перезапустить контейнер клиента (без пересборки образа):
+
+```bash
+./start.sh mystore
+```
+
+Обновить одного клиента (git pull + пересборка + перезапуск):
 
 ```bash
 ./update.sh mystore
@@ -150,7 +156,7 @@ docker compose --env-file ../volumes/data/mystore/.env up -d --build
 ./update.sh --all
 ```
 
-Скрипт выполняет `git pull` и пересобирает/перезапускает контейнер. Данные в `StoreAssistant_volumes/` не затрагиваются.
+Данные в `StoreAssistant_volumes/` не затрагиваются ни одним из скриптов.
 
 ---
 
