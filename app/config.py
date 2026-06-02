@@ -20,7 +20,7 @@ class Config:
     DOMAIN = os.getenv("DOMAIN", "")
     ALLOWED_ORIGINS = json.loads(os.getenv("ALLOWED_ORIGINS", "[]"))
     if DOMAIN:
-        ALLOWED_ORIGINS = ALLOWED_ORIGINS + [DOMAIN]
+        ALLOWED_ORIGINS = ALLOWED_ORIGINS + [f"https://{DOMAIN}"]
     FAST_API_PORT = int(os.getenv("FAST_API_PORT", "8000"))
     FAST_API_ADDRESS = os.getenv("FAST_API_ADDRESS", "0.0.0.0")
 
