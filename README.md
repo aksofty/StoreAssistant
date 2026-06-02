@@ -156,6 +156,12 @@ docker compose --env-file ../volumes/data/mystore/.env up -d --build
 ./update.sh --all
 ```
 
+Просмотр логов контейнера в реальном времени:
+
+```bash
+./logs.sh mystore
+```
+
 Данные в `StoreAssistant_volumes/` не затрагиваются ни одним из скриптов.
 
 ---
