@@ -1,3 +1,4 @@
+import os
 from sqladmin import ModelView, BaseView, expose
 from wtforms import DecimalField, IntegerField, SelectField, TextAreaField
 from app.config import Config
@@ -9,6 +10,9 @@ from markupsafe import Markup
 from app.models.source_faq import SourceFaq
 from app.models.source_yml import SourceYml
 from app.models.system_setting import SystemSetting
+from app import CLIENT_CACHE_DIR
+from app.state import sync_event
+from app.utils.common import get_rag_cache_path
 
 class SystemSettingAdmin(ModelView, model=SystemSetting):
     can_delete = False
@@ -221,7 +225,24 @@ class ChatAssistantAdmin(BaseView):
     
 
 
-class SourceYmlAdmin(ModelView, model=SourceYml):
+class _SourceAdminMixin:
+    @staticmethod
+    def _invalidate_cache(model):
+        cache_path = get_rag_cache_path({"url": model.url}, CLIENT_CACHE_DIR)
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+
+    async def after_model_change(self, _data, model, _is_created, _request):
+        if not model.active:
+            self._invalidate_cache(model)
+        sync_event.set()
+
+    async def after_model_delete(self, model, _request):
+        self._invalidate_cache(model)
+        sync_event.set()
+
+
+class SourceYmlAdmin(_SourceAdminMixin, ModelView, model=SourceYml):
     #category = "Источники знаний"
     name_plural = name = "Знания: Yml-файлы"
 
@@ -241,7 +262,8 @@ class SourceYmlAdmin(ModelView, model=SourceYml):
         SourceYml.url,
     ]
 
-class SourceFaqAdmin(ModelView, model=SourceFaq):
+
+class SourceFaqAdmin(_SourceAdminMixin, ModelView, model=SourceFaq):
     #category = "Источники знаний"
     name_plural = name = "Знания: HTML-FAQ"
 

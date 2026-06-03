@@ -7,6 +7,7 @@ from app.assistants.store_assistant import StoreAssistant
 from app.config import Config
 from app.database import init_db
 from app.cruds.system_setting import get_int_setting, get_str_setting
+from app.state import sync_event
 from app.utils.faiss import get_embeddings, init_faq_sources, init_faqs_store, init_offers_store, init_yml_sources, sync_offers_store
 
 
@@ -20,7 +21,13 @@ async def _sync_loop(
         interval = await get_int_setting("sync.interval", default=3600)
         yml_cache_time = await get_int_setting("faiss.yml.cache_time", default=3600)
         faq_cache_time = await get_int_setting("faiss.faq.cache_time", default=2592000)
-        await asyncio.sleep(interval)
+        
+        try:
+            await asyncio.wait_for(sync_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            pass
+
+        sync_event.clear()
         try:
             yml_changes = await init_yml_sources(cache_time=yml_cache_time)
             updated_offer_store = await sync_offers_store(assistant.offers_store, yml_changes, embeddings, faiss_dir)

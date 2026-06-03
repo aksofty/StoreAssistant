@@ -172,34 +172,43 @@ async def _build_faqs_index(docs: list, embeddings, batch_size: int, index_path:
 
 
 async def update_faqs_store(store: FAISS, updated_ids: list, batch_size: int, index_path: str) -> FAISS:
+    async with AsyncSessionLocal() as session:
+        active_sources = await get_faq_sources(session)
+    active_ids = {s.id for s in active_sources}
     updated_ids_set = set(updated_ids)
+
+    # Удаляем: деактивированные/удалённые источники + источники, которые будут перезаписаны
     ids_to_delete = [
         doc_id
         for doc_id, doc in store.docstore._dict.items()
-        if doc.metadata.get("source_id") in updated_ids_set
+        if doc.metadata.get("source_id") not in active_ids
+        or doc.metadata.get("source_id") in updated_ids_set
     ]
     if ids_to_delete:
         store.delete(ids_to_delete)
-        logger.info(f"Удалено из idx_faqs: {len(ids_to_delete)} документов (source_ids={updated_ids})")
+        logger.info(f"Удалено из idx_faqs: {len(ids_to_delete)} документов")
 
-    async with AsyncSessionLocal() as session:
-        db_faqs = await get_faqs_by_source_ids(session, updated_ids)
+    # Добавляем только те обновлённые источники, которые остались активными
+    refreshed_ids = list(updated_ids_set & active_ids)
+    if refreshed_ids:
+        async with AsyncSessionLocal() as session:
+            db_faqs = await get_faqs_by_source_ids(session, refreshed_ids)
 
-    new_docs = [
-        Document(
-            page_content=faq_dict.get("question", ""),
-            metadata={"id": faq_dict["id"], "source_id": faq_dict["source_id"]},
-        )
-        for db_faq in db_faqs
-        if (faq_dict := FaqRead.model_validate(db_faq).model_dump())
-    ]
+        new_docs = [
+            Document(
+                page_content=faq_dict.get("question", ""),
+                metadata={"id": faq_dict["id"], "source_id": faq_dict["source_id"]},
+            )
+            for db_faq in db_faqs
+            if (faq_dict := FaqRead.model_validate(db_faq).model_dump())
+        ]
 
-    if new_docs:
-        for i in range(0, len(new_docs), batch_size):
-            await store.aadd_documents(new_docs[i : i + batch_size])
-            if i > 0:
-                await asyncio.sleep(0.5)
-        logger.info(f"Добавлено в idx_faqs: {len(new_docs)} документов (source_ids={updated_ids})")
+        if new_docs:
+            for i in range(0, len(new_docs), batch_size):
+                await store.aadd_documents(new_docs[i : i + batch_size])
+                if i > 0:
+                    await asyncio.sleep(0.5)
+            logger.info(f"Добавлено в idx_faqs: {len(new_docs)} документов (source_ids={refreshed_ids})")
 
     await asyncio.to_thread(store.save_local, index_path)
     return store
@@ -209,7 +218,7 @@ async def init_faqs_store(faiss_dir, embeddings, batch_size=100, cache_time=2592
     index_path = os.path.join(faiss_dir, "idx_faqs")
     index_exists = os.path.exists(index_path)
 
-    if updated_ids and index_exists:
+    if index_exists and updated_ids is not None:
         store = await asyncio.to_thread(
             FAISS.load_local, index_path, embeddings, allow_dangerous_deserialization=True,
         )
