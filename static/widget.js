@@ -33,10 +33,21 @@
   // --- Load CSS ---
   function loadCSS(href) {
     if (document.querySelector('link[data-rag-widget]')) return;
+    // Инлайн-стиль скрывает элементы до загрузки внешнего CSS, чтобы не мелькали
+    if (!document.querySelector('style[data-rag-critical]')) {
+      const s = document.createElement('style');
+      s.setAttribute('data-rag-critical', '1');
+      s.textContent = '#rag-window,#rag-catalog{opacity:0!important;pointer-events:none!important}';
+      document.head.appendChild(s);
+    }
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = href;
     link.setAttribute('data-rag-widget', '1');
+    link.onload = () => {
+      const critical = document.querySelector('style[data-rag-critical]');
+      if (critical) critical.remove();
+    };
     document.head.appendChild(link);
   }
   loadCSS(cssUrl);

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from sqlalchemy import desc, select
+from sqlalchemy import delete, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.bot_user_message import BotUserMessage, MessageType
@@ -46,6 +46,15 @@ async def can_user_ask(session, chat_id: str, delay: int) -> bool:
     elapsed_time = (now - last_msg_time).total_seconds()
 
     return elapsed_time >= delay
+
+
+async def delete_old_messages(session: AsyncSession, max_age_seconds: int = 604800) -> int:
+    threshold = datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)
+    result = await session.execute(
+        delete(BotUserMessage).where(BotUserMessage.created_at < threshold)
+    )
+    await session.commit()
+    return result.rowcount
 
 
 async def add_bot_user_message(

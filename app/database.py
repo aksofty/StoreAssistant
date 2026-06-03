@@ -43,7 +43,7 @@ _DEFAULT_SETTINGS = [
     ("assistant.temperature", "0.1",  "АССИСТЕНТ: Температура генерации ответа (temperature)"),
     ("assistant.top_p", "0.1",  "АССИСТЕНТ: Вероятность генерации ответа (top_p)"),
     ("assistant.max_tokens", "1024",  "АССИСТЕНТ: Максимальное количество токенов в ответе (max_tokens)"),
-    ("assistant.ask_delay", "10",  "АССИСТЕНТ: задержка между вопросами (в секундах)"),
+    ("assistant.ask_delay", "10",  "АССИСТЕНТ: задержка между вопросами (сек)"),
     ("assistant.history_message_count", "4",  "АССИСТЕНТ: максимальное количество сообщений в истории"),
     (
         "assistant.prompt_response_format", 
@@ -69,17 +69,20 @@ _DEFAULT_SETTINGS = [
 
     ("faiss.faq.max_score", "300",  "FAISS FAQ: Максимальная релевантность"),
     ("faiss.faq.k", "3",  "FAISS FAQ: Количество результатов"),
-    ("faiss.faq.cache_time", "2592000",  "FAISS FAQ: время кэширования в секундах"),
+    ("faiss.faq.cache_time", "2592000",  "FAISS FAQ: время кэширования (сек)"),
 
     ("faiss.yml.max_score", "320",  "FAISS YML: Максимальная релевантность"),
     ("faiss.yml.k", "5",  "FAISS YML: Количество результатов"),
     ("faiss.yml.fetch_k", "50",  "FAISS YML: Количество результатов при поиске с фильтром"),
-    ("faiss.yml.cache_time", "3600",  "FAISS YML: время кэширования в секундах"),
+    ("faiss.yml.cache_time", "3600",  "FAISS YML: время кэширования (сек)"),
 
-    ("sync.interval", "3600",  "Интервал синхронизации офферов и FAQ в секундах"),
+    ("sync.interval", "3600",  "Интервал синхронизации офферов и FAQ (сек)"),
+    
 
     ("ask.max_concurrent_requests", "1",  "Максимальное количество одновременных запросов"),
     ("ask.max_queue_size", "5",  "Максимальное количество ожидающих запросов"),
+
+    ("history.delete_interval", "604800",  "Время хранения сообщений в истории (сек)"),
 ]
 
 

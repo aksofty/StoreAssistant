@@ -8,6 +8,8 @@ from app.config import Config
 from app.database import init_db
 from app.cruds.system_setting import get_int_setting, get_str_setting
 from app.state import sync_event
+from app.cruds.bot_user_message import delete_old_messages
+from app.database import AsyncSessionLocal
 from app.utils.faiss import get_embeddings, init_faq_sources, init_faqs_store, init_offers_store, init_yml_sources, sync_offers_store
 
 
@@ -21,6 +23,7 @@ async def _sync_loop(
         interval = await get_int_setting("sync.interval", default=3600)
         yml_cache_time = await get_int_setting("faiss.yml.cache_time", default=3600)
         faq_cache_time = await get_int_setting("faiss.faq.cache_time", default=2592000)
+        history_max_age = await get_int_setting("history.delete_interval", default=604800)
         
         try:
             await asyncio.wait_for(sync_event.wait(), timeout=interval)
@@ -38,6 +41,10 @@ async def _sync_loop(
             updated_faqs_store = await init_faqs_store(faiss_dir, embeddings, cache_time=faq_cache_time, updated_ids=updated_faq_ids)
             assistant.faqs_store = updated_faqs_store
             logger.info("Плановая синхронизация faq завершена.")
+
+            async with AsyncSessionLocal() as session:
+                deleted = await delete_old_messages(session, max_age_seconds=history_max_age)
+            logger.info(f"Очистка истории сообщений: удалено {deleted} записей.")
 
         except Exception as e:
             logger.error(f"Ошибка при плановой синхронизации: {e}")
