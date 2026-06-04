@@ -30,7 +30,8 @@ _SPECIAL_TOKEN_RE = re.compile(r'<\|[^|>]+\|>')
 def _clean_raw(s: str) -> str:
     """Убирает служебные токены модели и заменяет их кавычками."""
     # <|superquote|> и подобные токены — замена на "
-    return _SPECIAL_TOKEN_RE.sub('"', s)
+    str = s.replace('<|superquote|>', '"').replace('""', '"')
+    return _SPECIAL_TOKEN_RE.sub('"', str)
 
 
 def _extract_offers_from_text(text_val: str) -> tuple[str, list | None]:

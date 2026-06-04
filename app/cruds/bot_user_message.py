@@ -7,9 +7,9 @@ from app.models.bot_user_message import BotUserMessage, MessageType
 
 
 async def get_message_history(
-        session: AsyncSession, chat_id: str, limit: int = 4, ttl_hours: int = 1) -> list[BotUserMessage]:
-    
-    time_threshold = datetime.now(timezone.utc) - timedelta(hours=ttl_hours)
+        session: AsyncSession, chat_id: str, limit: int = 4, ttl_seconds: int = 3600) -> list[BotUserMessage]:
+
+    time_threshold = datetime.now(timezone.utc) - timedelta(seconds=ttl_seconds)
     query = (
         select(BotUserMessage)
         .where(BotUserMessage.chat_id == chat_id, BotUserMessage.created_at >= time_threshold)

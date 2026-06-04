@@ -11,6 +11,7 @@ from app.admin.views import (
     BotUserAdmin,
     BotUserMessageAdmin,
     ChatAssistantAdmin,
+    FaqExtraAdmin,
     SourceFaqAdmin,
     SourceYmlAdmin,
     SystemSettingAdmin,
@@ -50,6 +51,7 @@ for view in [
     SystemSettingAdmin,
     SourceYmlAdmin,
     SourceFaqAdmin,
+    FaqExtraAdmin,
     BotUserAdmin
 ]:
     admin.add_view(view)

@@ -7,6 +7,7 @@ from app.database import AsyncSessionLocal
 from app.models.bot_user_message import BotUserMessage
 from app.models.bot_user import BotUser
 from markupsafe import Markup
+from app.models.faq_extra import FaqExtra
 from app.models.source_faq import SourceFaq
 from app.models.source_yml import SourceYml
 from app.models.system_setting import SystemSetting
@@ -225,6 +226,48 @@ class ChatAssistantAdmin(BaseView):
     
 
 
+class FaqExtraAdmin(ModelView, model=FaqExtra):
+    name_plural = name = "Знания: Доп. FAQ"
+    icon = "fa-solid fa-circle-question"
+    can_export = False
+
+    column_list = [FaqExtra.id, FaqExtra.question, FaqExtra.answer]
+    column_labels = {
+        FaqExtra.id: "id",
+        FaqExtra.question: "Вопрос",
+        FaqExtra.answer: "Ответ",
+    }
+    column_searchable_list = [FaqExtra.question]
+    column_default_sort = ("id", True)
+
+    form_columns = [FaqExtra.question, FaqExtra.answer]
+
+    async def scaffold_form(self):
+        form_class = await super().scaffold_form()
+        form_class.question = TextAreaField(
+            label="Вопрос",
+            render_kw={"class": "form-control", "rows": "3",
+                       "style": "resize: none; overflow-y: hidden;",
+                       "oninput": "this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"}
+        )
+        form_class.answer = TextAreaField(
+            label="Ответ",
+            render_kw={"class": "form-control", "rows": "6",
+                       "style": "resize: none; overflow-y: hidden;",
+                       "oninput": "this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"}
+        )
+        return form_class
+    
+    async def after_model_delete(self, model, _request):
+        sync_event.set()
+
+    async def after_model_change(self, _data, model, _is_created, _request):
+        sync_event.set()
+        
+    async def after_model_add(self, model, _request):
+        sync_event.set()
+
+
 class _SourceAdminMixin:
     @staticmethod
     def _invalidate_cache(model):
@@ -236,6 +279,7 @@ class _SourceAdminMixin:
         if not model.active:
             self._invalidate_cache(model)
         sync_event.set()
+
 
     async def after_model_delete(self, model, _request):
         self._invalidate_cache(model)

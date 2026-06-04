@@ -9,7 +9,7 @@ from app.assistants.store_assistant import StoreAssistant
 from app.config import Config
 from app.cruds.bot_user import get_add_bot_user
 from app.cruds.bot_user_message import can_user_ask, get_message_history
-from app.cruds.system_setting import get_float_setting
+from app.cruds.system_setting import get_float_setting, get_int_setting
 from app.database import AsyncSessionLocal
 from app.models.bot_user_message import MessageType
 from app.schemas.ask import AIQuestion, AIResponse, ChatHistoryMessage, ChatHistoryRequest, ChatHistoryResponse
@@ -100,7 +100,9 @@ async def ask_node(
 @router.post("/chat_history", response_model=ChatHistoryResponse, dependencies=[Depends(check_access)])
 async def get_chat_history(request: ChatHistoryRequest):
     async with AsyncSessionLocal() as session:
-        messages = await get_message_history(session, chat_id=request.user_id, limit=20, ttl_hours=24)
+        limit = await get_int_setting("history.count_chat_view", default=20)
+        ttl_seconds = await get_int_setting("history.ttl_chat_view", default=216001)
+        messages = await get_message_history(session, chat_id=request.user_id, limit=limit, ttl_seconds=ttl_seconds)
 
     result = []
     for msg in messages:

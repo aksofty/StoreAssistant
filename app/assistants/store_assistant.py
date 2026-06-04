@@ -40,6 +40,8 @@ class StoreAssistant:
         self,
         offers_store=None,
         faqs_store=None,
+        faqs_extra_store=None,
+        embeddings=None,
         system_prompt: str = "",
         scope: str = "GIGACHAT_API_PERS",
         model: str = "GigaChat-2-Pro",
@@ -48,16 +50,20 @@ class StoreAssistant:
         max_tokens: int = 1024,
         max_score: int = 300,
         k: int = 3,
-        history_count: int = 4,
+        history_count: int = 5,
+        history_ttl: int = 14801,
         max_connections = 1
 
     ):
         self.offers_store = offers_store
         self.faqs_store = faqs_store
+        self.faqs_extra_store = faqs_extra_store
+        self.embeddings = embeddings
         self.system_prompt = system_prompt
         self.max_score = max_score
         self.k = k
         self.history_count = history_count
+        self.history_ttl = history_ttl
 
         self.chat = GigaChat(
             model=model,
@@ -74,14 +80,20 @@ class StoreAssistant:
         await self._get_settings()
 
         cleaned_query = query.strip().removesuffix("?").strip()
-        history = await self._get_user_message_history(chat_id=chat_id)
+        history = await self._get_user_message_history(chat_id=chat_id, limit=self.history_count, ttl=self.history_ttl)
 
         system_prompt = self.system_prompt
-        faqs = await faiss_search(cleaned_query, self.faqs_store, max_score=self.max_score, k=self.k)
+        faqs = await faiss_search(
+            query=cleaned_query,
+            embeddings=self.embeddings,
+            store=self.faqs_store,
+            extra_store=self.faqs_extra_store,
+            max_score=self.max_score,
+            k=self.k
+        )
         if faqs:
             system_prompt += f"\n**НАЧАЛО КОНТЕКСТА**:\n{'\n'.join(faqs)}\n**КОНЕЦ КОНТЕКСТА**"
 
-        #print(system_prompt)
 
         messages = [SystemMessage(content=system_prompt)] + history + [HumanMessage(content=cleaned_query)]
         response_text, tool_messages, total_tokens = await self._run_model_with_tools(messages)
@@ -141,6 +153,7 @@ class StoreAssistant:
         self.max_score = await get_int_setting("faiss.faq.max_score", default=self.max_score)
         self.k = await get_int_setting("faiss.faq.k", default=self.k)
         self.history_count = await get_int_setting("assistant.history_message_count", default=self.history_count)
+        self.history_ttl = await get_int_setting("history.ttl_chat", default=self.history_ttl)
 
     def _get_total_tokens(self, response) -> int:
         if not response.response_metadata:
@@ -148,9 +161,9 @@ class StoreAssistant:
         token_usage = response.response_metadata.get("token_usage") or {}
         return token_usage.get("total_tokens", 0)
 
-    async def _get_user_message_history(self, chat_id: int, limit: int = 5) -> list[BaseMessage]:
+    async def _get_user_message_history(self, chat_id: int, limit: int = 5, ttl: int = 14800) -> list[BaseMessage]:
         async with AsyncSessionLocal() as session:
-            message_history = await get_message_history(session, chat_id=chat_id, limit=limit)
+            message_history = await get_message_history(session, chat_id=chat_id, limit=limit, ttl_seconds=ttl)
 
         if not message_history:
             return [

@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 from loguru import logger
 from app import CLIENT_CACHE_DIR
 from app.cruds.faq import add_faqs, delete_faqs_by_source, get_faqs, get_faqs_by_ids, get_faqs_by_source_ids
+from app.cruds.faq_extra import get_faq_extras, get_faq_extras_by_ids
 from app.cruds.offer import get_offers, get_offers_by_ids, sync_offers
 from app.cruds.source_faq import get_faq_sources
 from app.cruds.source_yml import get_yml_sources
@@ -52,36 +53,66 @@ async def get_embeddings(client_id: str, client_secret: str, scope: str = "GIGAC
     )
 
 
-async def faiss_search(query: str, store, max_score: float = 300.0, k: int = 3) -> list[str]:
-    if store is None:
+async def faiss_search(
+    query: str, embeddings, store=None, extra_store=None, max_score: float = 300.0, k: int = 3
+) -> list[str]:
+    if store is None and extra_store is None:
         return []
-    # 1. Асинхронный поиск в FAISS
-    docs_with_scores = await store.asimilarity_search_with_score(query, k=k)
-    #print(docs_with_scores)
-    if not docs_with_scores:
-        return []
-       
-    # 2. Фильтруем ID по score, сохраняя исходный порядок релевантности FAISS
-    faq_ids = [doc.metadata['id'] for doc, score in docs_with_scores if score < max_score]
-    
-    if not faq_ids:
-        return []
-            
-    # 3. Достаем данные из БД
-    async with AsyncSessionLocal() as session:
-        db_faqs = await get_faqs_by_ids(session, faq_ids)
-        
-        # Мапим объекты БД в словарь для мгновенного доступа по ID
-        faq_map = {
-            db_faq.id: FaqRead.model_validate(db_faq).model_dump() 
-            for db_faq in db_faqs
-        }
 
-    # 4. Собираем финальный список строго в порядке релевантности от FAISS
+    # 1. Один вызов API — получаем вектор запроса
+    vector = await embeddings.aembed_query(query)
+
+    # 2. Ищем в store(ах) по вектору параллельно — FAISS CPU, без API
+    tasks = []
+    if store is not None:
+        tasks.append(asyncio.to_thread(store.similarity_search_with_score_by_vector, vector, k))
+    if extra_store is not None:
+        tasks.append(asyncio.to_thread(extra_store.similarity_search_with_score_by_vector, vector, k))
+
+    results = await asyncio.gather(*tasks)
+
+    # 3. Помечаем результаты источником и сливаем
+    tagged: list[tuple[float, str, int]] = []
+    idx = 0
+    if store is not None:
+        for doc, score in results[idx]:
+            tagged.append((score, "faq", doc.metadata["id"]))
+        idx += 1
+    if extra_store is not None:
+        for doc, score in results[idx]:
+            tagged.append((score, "extra", doc.metadata["id"]))
+
+    # 3. Сортируем по релевантности, отсекаем по max_score, берём топ k
+    tagged = sorted(tagged, key=lambda x: x[0])
+    tagged = [(score, src, item_id) for score, src, item_id in tagged if score < max_score][:k]
+
+    if not tagged:
+        return []
+
+    # 4. Запрашиваем данные из БД по источникам
+    faq_ids = [item_id for _, src, item_id in tagged if src == "faq"]
+    extra_ids = [item_id for _, src, item_id in tagged if src == "extra"]
+
+    async with AsyncSessionLocal() as session:
+        faq_map = {}
+        if faq_ids:
+            db_faqs = await get_faqs_by_ids(session, faq_ids)
+            faq_map = {f.id: FaqRead.model_validate(f).model_dump() for f in db_faqs}
+
+        extra_map = {}
+        if extra_ids:
+            db_extras = await get_faq_extras_by_ids(session, extra_ids)
+            extra_map = {e.id: e for e in db_extras}
+
+    # 5. Собираем ответ строго в порядке релевантности
     faqs = []
-    for faq_id in faq_ids:
-        if faq := faq_map.get(faq_id):
-            faqs.append(f"{faq['question']}: {faq['answer']}")
+    for _, src, item_id in tagged:
+        if src == "faq":
+            if faq := faq_map.get(item_id):
+                faqs.append(f"{faq['question']}: {faq['answer']}")
+        else:
+            if item := extra_map.get(item_id):
+                faqs.append(f"{item.question}: {item.answer}")
 
     return faqs
 
@@ -260,6 +291,63 @@ async def init_faqs_store(faiss_dir, embeddings, batch_size=100, cache_time=2592
     )
     return store
 
+
+
+async def sync_faq_extra_store(faiss_dir: str, embeddings, batch_size: int = 100) -> FAISS | None:
+    index_path = os.path.join(faiss_dir, "idx_faq_extra")
+
+    async with AsyncSessionLocal() as session:
+        db_items = await get_faq_extras(session)
+
+    db_ids = {item.id: item for item in db_items}
+
+    # Загружаем существующий индекс или создаём с нуля
+    if os.path.exists(index_path):
+        store = await asyncio.to_thread(
+            FAISS.load_local, index_path, embeddings, allow_dangerous_deserialization=True
+        )
+        index_ids = {
+            doc.metadata["id"]: doc_id
+            for doc_id, doc in store.docstore._dict.items()
+        }
+    else:
+        store = None
+        index_ids = {}
+
+    changed = False
+
+    # Удаляем лишние (есть в индексе, нет в БД)
+    extra_doc_ids = [doc_id for item_id, doc_id in index_ids.items() if item_id not in db_ids]
+    if extra_doc_ids:
+        store.delete(extra_doc_ids)
+        logger.info(f"idx_faq_extra: удалено {len(extra_doc_ids)} лишних записей.")
+        changed = True
+
+    # Добавляем отсутствующие (есть в БД, нет в индексе)
+    missing = [item for item_id, item in db_ids.items() if item_id not in index_ids]
+    if missing:
+        docs = [Document(page_content=item.question, metadata={"id": item.id}) for item in missing]
+        if store is None:
+            store = await FAISS.afrom_documents(docs[:batch_size], embeddings)
+            for i in range(batch_size, len(docs), batch_size):
+                await store.aadd_documents(docs[i : i + batch_size])
+                await asyncio.sleep(0.5)
+        else:
+            for i in range(0, len(docs), batch_size):
+                await store.aadd_documents(docs[i : i + batch_size])
+                if i > 0:
+                    await asyncio.sleep(0.5)
+        logger.info(f"idx_faq_extra: добавлено {len(missing)} новых записей.")
+        changed = True
+
+    if store is None:
+        logger.warning("Нет записей в faq_extra для создания индекса.")
+        return None
+
+    if changed:
+        await asyncio.to_thread(store.save_local, index_path)
+
+    return store
 
 
 async def init_offers_store(faiss_dir, embeddings, batch_size=100, force_update=False):
@@ -463,3 +551,5 @@ async def init_yml_sources(cache_time: int = 3600) -> List[Dict[str, Any]]:
     # Возвращаем в формате, совместимом с sync_offers_store
     return [{"added": changes["added"], "deleted": changes["deleted"]}]
     
+
+   

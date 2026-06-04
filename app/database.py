@@ -4,6 +4,7 @@ from loguru import logger
 
 from app import CLIENT_DB_FILE
 from app.models.base import Base
+import app.models 
 
 engine = create_async_engine(
     f"sqlite+aiosqlite:///{CLIENT_DB_FILE}",
@@ -54,7 +55,7 @@ _DEFAULT_SETTINGS = [
 """,
         "АССИСТЕНТ: промпт для формирования формата ответа", 
     ),
-    ("parser.model", "GigaChat-2", "ПАРСЕР: Модель генерации вопросовна основе контента"),
+    ("parser.model", "GigaChat-2", "ПАРСЕР: Модель генерации вопросов на основе контента"),
     (
         "parser.prompt", 
         """Ты — эксперт по подготовке данных для базы знаний. 
@@ -82,7 +83,12 @@ _DEFAULT_SETTINGS = [
     ("ask.max_concurrent_requests", "1",  "Максимальное количество одновременных запросов"),
     ("ask.max_queue_size", "5",  "Максимальное количество ожидающих запросов"),
 
-    ("history.delete_interval", "604800",  "Время хранения сообщений в истории (сек)"),
+    ("history.delete_interval", "604800",  "Время хранения сообщений в БД (сек)"),
+    ("history.ttl_chat", "14800",  "Время актуальности сообщений для ИИ в чате (сек)"),
+
+    ("history.ttl_chat_view", "216000",  "Время отображения сообщений в чате (сек)"),
+    ("history.count_chat_view", "14",  "Максимальное количество сообщений для отображения в чате"),
+    
 ]
 
 
@@ -90,7 +96,7 @@ _DEFAULT_SETTINGS = [
 
 async def _seed_defaults():
     params = [
-        {"key": key, "value": value, "description": description, "sort": i * 100}
+        {"key": key, "value": value, "description": description, "sort": i}
         for i, (key, value, description) in enumerate(reversed(_DEFAULT_SETTINGS))
     ]
     async with AsyncSessionLocal() as session:
@@ -100,6 +106,10 @@ async def _seed_defaults():
                     "INSERT OR IGNORE INTO system_settings (key, value, description, sort) "
                     "VALUES (:key, :value, :description, :sort)"
                 ),
+                params,
+            )
+            await session.execute(
+                text("UPDATE system_settings SET sort = :sort, description = :description WHERE key = :key"),
                 params,
             )
 
