@@ -1,5 +1,5 @@
 import sys
-from app.__version__ import __version__
+from __version__ import __version__
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
