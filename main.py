@@ -45,16 +45,26 @@ app.include_router(ask.router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 authentication_backend = AdminAuth(secret_key=Config.ADMIN_SECRET_KEY)
-admin = Admin(app, engine, authentication_backend=authentication_backend)
+admin = Admin(
+    app, 
+    engine, 
+    authentication_backend=authentication_backend, 
+    title=f"ЧатБот v.{__version__}",
+    #logo_url= "/static/logo.png",
+    #favicon_url="/static/favicon.ico",
+
+)
+
+
 
 for view in [
     ChatAssistantAdmin,
     BotUserMessageAdmin,
-    SystemSettingAdmin,
     SourceYmlAdmin,
     SourceFaqAdmin,
     FaqExtraAdmin,
-    BotUserAdmin
+    #BotUserAdmin,
+    SystemSettingAdmin,
 ]:
     admin.add_view(view)
 

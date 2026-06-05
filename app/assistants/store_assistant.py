@@ -1,18 +1,14 @@
 import json
-
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_gigachat import GigaChat
 from loguru import logger
-
-
 from app.cruds.bot_user_message import add_bot_user_message, get_message_history
 from app.cruds.system_setting import get_float_setting, get_int_setting, get_str_setting
 from app.database import AsyncSessionLocal
 from app.models.bot_user_message import MessageType
 from app.tools.tools import ALL_TOOLS, TOOLS_MAP
 from app.utils.faiss import faiss_search
-from pydantic import BaseModel, Field
-from typing import List
+
 
 _MESSAGE_CLASS = {
     MessageType.HUMAN: HumanMessage,
@@ -24,7 +20,6 @@ _NO_TOOLS_PROMPT = (
     "У тебя больше нет попыток вызова функций. "
     "Ответь пользователю прямо сейчас на основе полученной информации."
 )
-
 
 def _extract_text(raw: str) -> str:
     try:

@@ -1,4 +1,6 @@
 import os
+import json
+from datetime import datetime
 from urllib.parse import quote
 from sqladmin import ModelView, BaseView, expose
 from wtforms import DecimalField, IntegerField, SelectField, TextAreaField
@@ -15,6 +17,16 @@ from app.models.system_setting import SystemSetting
 from app import CLIENT_CACHE_DIR
 from app.state import sync_event
 from app.utils.common import get_rag_cache_path
+
+def _date_format(value=None):
+    if not value:
+        return ""
+    now = datetime.now()
+    if value.date() == now.date():
+        return value.strftime("%H:%M")
+    if value.year == now.year:
+        return value.strftime("%d.%m %H:%M")
+    return value.strftime("%d.%m.%Y %H:%M")
 
 class SystemSettingAdmin(ModelView, model=SystemSetting):
     can_delete = False
@@ -104,6 +116,12 @@ class SystemSettingAdmin(ModelView, model=SystemSetting):
                 "faiss.yml.fetch_k",
                 "faiss.yml.cache_time",
                 "sync.interval",
+                "ask.max_concurrent_requests",
+                "ask.max_queue_size",
+                "history.delete_interval",
+                "history.ttl_chat",
+                "history.ttl_chat_view",
+                "history.count_chat_view"
                 ]:
                 unbound_field = IntegerField(
                     label=field_label,
@@ -174,6 +192,27 @@ class BotUserAdmin(ModelView, model=BotUser):
     form_columns = [BotUser.chat_id, BotUser.name]
 
 
+def _format_message_text(m):
+    if not m.text:
+        return ""
+    if m.type == MessageType.AI:
+        try:
+            parsed = json.loads(m.text)
+            return Markup(f"<pre style='white-space:pre-wrap;margin:0;color:#555;font-size:0.85em;background:#f8f9fa;border-radius:6px;padding:6px'>{json.dumps(parsed, indent=2, ensure_ascii=False)}</pre>")
+        except (json.JSONDecodeError, ValueError):
+            pass
+    text = m.text.replace("\n\n", "<br>").replace("\n", "<br>")
+    if m.type == MessageType.HUMAN:
+        return Markup(
+            f'<span style="background:#aced9d;border-radius:6px;padding:2px 6px;display:inline-block">{text}</span>'
+            f' <a title="Добавить вопрос в FAQ и написать ответ" href="/admin/faq-extra/create?question={quote(m.text or "")}" '
+            f'class="btn btn-sm btn-outline-primary" '
+            f'style="white-space:nowrap;font-size:0.75rem;padding:2px 8px;border-radius:12px" '
+            f'onclick="event.stopPropagation()">'
+            f'<i class="fa-solid fa-plus me-1"></i>доп.FAQ</a>'
+        )
+
+
 class BotUserMessageAdmin(ModelView, model=BotUserMessage):
     name_plural = name = "История сообщений"
     icon = "fa-solid fa-comments"
@@ -182,14 +221,15 @@ class BotUserMessageAdmin(ModelView, model=BotUserMessage):
 
     page_size = 30 
 
-    column_list = [BotUserMessage.tokens, "add_to_faq", BotUserMessage.text, BotUserMessage.chat_id, BotUserMessage.created_at,]
+    #column_list = [BotUserMessage.tokens, "add_to_faq", BotUserMessage.text, BotUserMessage.chat_id]
+    column_list = [BotUserMessage.tokens, BotUserMessage.type, BotUserMessage.text, BotUserMessage.chat_id]
     form_columns = [BotUserMessage.chat_id, BotUserMessage.type, BotUserMessage.text]
     column_searchable_list = [BotUserMessage.type, BotUserMessage.chat_id]
 
     column_labels = {
-        BotUserMessage.chat_id: "id чата",
-        BotUserMessage.type: "тип сообщения",
-        BotUserMessage.text: "текст сообщения",
+        BotUserMessage.chat_id: "Чат",
+        BotUserMessage.type: "Отправитель",
+        BotUserMessage.text: "Текст сообщения",
         BotUserMessage.tokens: "Токены",
         BotUserMessage.created_at: "время создания",
         "add_to_faq": "",
@@ -199,13 +239,23 @@ class BotUserMessageAdmin(ModelView, model=BotUserMessage):
     column_default_sort = ("id", True)
 
     column_formatters = {
-        "text": lambda m, a: Markup(m.text.replace("\n\n", "<br>").replace("\n", "<br>")) if m.text else "",
-        "add_to_faq": lambda m, a: Markup(
-            f'<a href="/admin/faq-extra/create?question={quote(m.text or "")}" '
-            f'class="btn btn-sm" style="white-space:nowrap" '
-            f'onclick="event.stopPropagation()">+ доп.FAQ</a>'
-        ) if m.type == MessageType.HUMAN else "",
+        "text": lambda m, a: _format_message_text(m),
+        "chat_id": lambda m, a: Markup(f'<a title="Все сообщения диалога №{m.chat_id}" href="/admin/bot-user-message/list?search={m.chat_id}"><i class="fa-solid fa-comment"></i></a>'),
+        "type": lambda m, a: 
+            Markup(f'<div class="text-center"><i class="fa-solid fa-question" title="AI"></i><br><span class="small">{_date_format(m.created_at)}</span></span></div>')
+            if m.type == MessageType.HUMAN else (
+                Markup(f'<div class="text-center"><i class="fa-solid fa-robot" title="AI"></i><br><span class="small">{_date_format(m.created_at)}</span></span></div>') if m.type == MessageType.AI else ""
+            )
     }
+
+
+    """Markup(
+            f'<a title="Добавить вопрос в FAQ и написать ответ" href="/admin/faq-extra/create?question={quote(m.text or "")}" '
+            f'class="btn btn-sm btn-outline-primary" '
+            f'style="white-space:nowrap;font-size:0.75rem;padding:2px 8px;border-radius:12px" '
+            f'onclick="event.stopPropagation()">'
+            f'<i class="fa-solid fa-plus me-1"></i>доп.FAQ</a>'
+        )"""
     
 class ChatAssistantAdmin(BaseView):
     name = "Ассистент в чате"
@@ -238,7 +288,7 @@ class ChatAssistantAdmin(BaseView):
 
 class FaqExtraAdmin(ModelView, model=FaqExtra):
     name_plural = name = "Знания: Доп. FAQ"
-    icon = "fa-solid fa-circle-question"
+    icon = "fa-solid fa-brain"
     can_export = False
     create_template = "admin/faqextra_create.html"
 

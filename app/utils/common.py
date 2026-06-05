@@ -2,7 +2,7 @@ import os
 import json
 import re
 from urllib.parse import urlparse, unquote
-from json_repair import repair_json
+from json_repair import repair_json # type: ignore
 
 def get_rag_cache_path(source: dict, cache_dir: str):
     file_name = format_url_to_filename(source["url"])
