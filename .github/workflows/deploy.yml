@@ -16,7 +16,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/StoreAssistant
+            cd /opt/StoreAssistant
             ./update.sh --all
 
       # - name: Deploy to SSH_HOST_2
