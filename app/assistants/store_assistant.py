@@ -11,7 +11,8 @@ from app.database import AsyncSessionLocal
 from app.models.bot_user_message import MessageType
 from app.tools.tools import ALL_TOOLS, TOOLS_MAP
 from app.utils.faiss import faiss_search
-
+from pydantic import BaseModel, Field
+from typing import List
 
 _MESSAGE_CLASS = {
     MessageType.HUMAN: HumanMessage,
@@ -73,6 +74,7 @@ class StoreAssistant:
             scope=scope,
             max_tokens=max_tokens,
             http_client_parameters={"max_connections": max_connections},
+            model_kwargs={"response_format": {"type": "json_object"}}
         )
         self.model_with_tools = self.chat.bind_tools(ALL_TOOLS)
 

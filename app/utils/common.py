@@ -2,6 +2,7 @@ import os
 import json
 import re
 from urllib.parse import urlparse, unquote
+from json_repair import repair_json
 
 def get_rag_cache_path(source: dict, cache_dir: str):
     file_name = format_url_to_filename(source["url"])
@@ -97,6 +98,22 @@ def normalize_answer(raw: str) -> str:
                 result["offers"] = offers
             return json.dumps(result, ensure_ascii=False)
     except (json.JSONDecodeError, ValueError):
+        pass
+
+    # 2.7. json_repair — восстанавливает незакрытые скобки, кривые кавычки и прочие типичные ошибки LLM
+    try:
+        repaired = repair_json(raw, ensure_ascii=False)
+        data = json.loads(repaired)
+        if isinstance(data, dict) and "text" in data:
+            text_val = str(data["text"])
+            offers = data.get("offers") or None
+            if not offers:
+                text_val, offers = _extract_offers_from_text(text_val)
+            result = {"text": text_val}
+            if offers:
+                result["offers"] = offers
+            return json.dumps(result, ensure_ascii=False)
+    except Exception:
         pass
 
     # 3. Regex-экстракция text и offers (до step 2.5, чтобы не потерять offers при unclosed JSON)
