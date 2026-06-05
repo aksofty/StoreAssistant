@@ -7,20 +7,24 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        host:
-          - ${{ secrets.SSH_HOST_REGRU }}
-          # - ${{ secrets.SSH_HOST_2 }}  # добавь при необходимости
 
     steps:
-      - name: Deploy via SSH
+      - name: Deploy to SSH_HOST_REGRU
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ matrix.host }}
+          host: ${{ secrets.SSH_HOST_REGRU }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/StoreAssistant
             ./update.sh --all
+
+      # - name: Deploy to SSH_HOST_2
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.SSH_HOST_2 }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     script: |
+      #       cd ~/StoreAssistant
+      #       ./update.sh --all
