@@ -1,10 +1,11 @@
 import os
+from urllib.parse import quote
 from sqladmin import ModelView, BaseView, expose
 from wtforms import DecimalField, IntegerField, SelectField, TextAreaField
 from app.config import Config
 from app.cruds.bot_user_message import get_message_history
 from app.database import AsyncSessionLocal
-from app.models.bot_user_message import BotUserMessage
+from app.models.bot_user_message import BotUserMessage, MessageType
 from app.models.bot_user import BotUser
 from markupsafe import Markup
 from app.models.faq_extra import FaqExtra
@@ -50,7 +51,7 @@ class SystemSettingAdmin(ModelView, model=SystemSetting):
 
     form_columns = [SystemSetting.value]
 
-    page_size = 30 
+    page_size = 50 
 
     async def scaffold_form(self):
         form_class = await super().scaffold_form()
@@ -179,22 +180,31 @@ class BotUserMessageAdmin(ModelView, model=BotUserMessage):
     can_create = False
     can_export = False
 
+    page_size = 30 
+
+    column_list = [BotUserMessage.tokens, "add_to_faq", BotUserMessage.text, BotUserMessage.chat_id, BotUserMessage.created_at,]
+    form_columns = [BotUserMessage.chat_id, BotUserMessage.type, BotUserMessage.text]
+    column_searchable_list = [BotUserMessage.type, BotUserMessage.chat_id]
+
     column_labels = {
         BotUserMessage.chat_id: "id чата",
         BotUserMessage.type: "тип сообщения",
         BotUserMessage.text: "текст сообщения",
         BotUserMessage.tokens: "Токены",
-        BotUserMessage.created_at: "время создания"
+        BotUserMessage.created_at: "время создания",
+        "add_to_faq": "",
     }
-    column_list = [BotUserMessage.tokens, BotUserMessage.created_at, BotUserMessage.chat_id, BotUserMessage.type, BotUserMessage.text]
-    form_columns = [BotUserMessage.chat_id, BotUserMessage.type, BotUserMessage.text]
-    column_searchable_list = [BotUserMessage.type, BotUserMessage.chat_id]
-    
+
     column_sortable_list = [BotUserMessage.id]
     column_default_sort = ("id", True)
 
     column_formatters = {
-        "text": lambda m, a: Markup(m.text.replace("\n\n", "<br>").replace("\n", "<br>")) if m.text else ""
+        "text": lambda m, a: Markup(m.text.replace("\n\n", "<br>").replace("\n", "<br>")) if m.text else "",
+        "add_to_faq": lambda m, a: Markup(
+            f'<a href="/admin/faq-extra/create?question={quote(m.text or "")}" '
+            f'class="btn btn-sm" style="white-space:nowrap" '
+            f'onclick="event.stopPropagation()">+ доп.FAQ</a>'
+        ) if m.type == MessageType.HUMAN else "",
     }
     
 class ChatAssistantAdmin(BaseView):
@@ -230,6 +240,7 @@ class FaqExtraAdmin(ModelView, model=FaqExtra):
     name_plural = name = "Знания: Доп. FAQ"
     icon = "fa-solid fa-circle-question"
     can_export = False
+    create_template = "admin/faqextra_create.html"
 
     column_list = [FaqExtra.id, FaqExtra.question, FaqExtra.answer]
     column_labels = {

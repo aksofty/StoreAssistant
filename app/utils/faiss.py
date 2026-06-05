@@ -347,6 +347,8 @@ async def sync_faq_extra_store(faiss_dir: str, embeddings, batch_size: int = 100
     if changed:
         await asyncio.to_thread(store.save_local, index_path)
 
+    
+    logger.info("Используем кеш idx_faq_extra")
     return store
 
 

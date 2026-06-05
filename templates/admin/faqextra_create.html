@@ -1,0 +1,18 @@
+{% extends "sqladmin/create.html" %}
+
+{% block tail %}
+    {{ super() }}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const question = new URLSearchParams(window.location.search).get("question");
+            if (question) {
+                const field = document.querySelector('textarea[name="question"]');
+                if (field) {
+                    field.value = question;
+                    field.style.height = "auto";
+                    field.style.height = field.scrollHeight + "px";
+                }
+            }
+        });
+    </script>
+{% endblock %}

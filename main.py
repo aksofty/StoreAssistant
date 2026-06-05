@@ -1,4 +1,5 @@
 import sys
+from app.__version__ import __version__
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -21,9 +22,10 @@ from app.database import engine
 from app.lifespan import lifespan
 from app.routers import ask
 
+LOG_FORMAT = f"[v{__version__}] {{time:YYYY-MM-DD HH:mm:ss}} | {{level}} | {{message}}"
 logger.remove()
-logger.add(sys.stdout, level="DEBUG")
-logger.add(CLIENT_LOG_FILE, rotation="1 MB")
+logger.add(sys.stdout, level="DEBUG", format=LOG_FORMAT)
+logger.add(CLIENT_LOG_FILE, rotation="1 MB", format=LOG_FORMAT)
 
 app = FastAPI(
     lifespan=lifespan,
