@@ -107,6 +107,8 @@ class SystemSettingAdmin(ModelView, model=SystemSetting):
             elif obj.key in [
                 "assistant.max_tokens",
                 "assistant.ask_delay", 
+                "assistant.ask_limit", 
+                "assistant.ask_interval", 
                 "assistant.history_message_count",
                 "faiss.faq.max_score",
                 "faiss.faq.k",

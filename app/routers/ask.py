@@ -8,7 +8,7 @@ from loguru import logger
 from app.assistants.store_assistant import StoreAssistant
 from app.config import Config
 from app.cruds.bot_user import get_add_bot_user
-from app.cruds.bot_user_message import can_user_ask, get_message_history
+from app.cruds.bot_user_message import can_user_ask, get_message_history, user_ask_limit
 from app.cruds.system_setting import get_float_setting, get_int_setting
 from app.database import AsyncSessionLocal
 from app.models.bot_user_message import MessageType
@@ -74,6 +74,16 @@ async def ask_node(
                         user_id=request.user_id,
                         question=request.question,
                         answer=json.dumps({"text": "Вы слишком часто задаете вопросы, подождите немного..."}, ensure_ascii=False),
+                    )
+                
+                ask_interval = await get_float_setting("assistant.ask_interval", default=86400)
+                ask_limit = await get_float_setting("assistant.ask_limit", default=10)
+                user_limit = await user_ask_limit(session=session, chat_id=request.user_id, interval=ask_interval, limit=ask_limit)
+                if user_limit:
+                    return AIResponse(
+                        user_id=request.user_id,
+                        question=request.question,
+                        answer=json.dumps({"text": "Вы слишком много задаете вопросов, давайте немного передохнем..."}, ensure_ascii=False),
                     )
 
                 await get_add_bot_user(session, request.user_id, name="")

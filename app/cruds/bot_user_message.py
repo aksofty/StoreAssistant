@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from sqlalchemy import delete, desc, select
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.bot_user_message import BotUserMessage, MessageType
@@ -46,6 +46,43 @@ async def can_user_ask(session, chat_id: str, delay: int) -> bool:
     elapsed_time = (now - last_msg_time).total_seconds()
 
     return elapsed_time >= delay
+
+
+async def user_ask_limit(session, chat_id: str, interval: int, limit: int) -> bool:
+    # Запрашиваем ровно столько последних сообщений, сколько составляет наш лимит
+    query = (
+        select(BotUserMessage)
+        .filter_by(chat_id=chat_id, type=MessageType.HUMAN)
+        .order_by(desc(BotUserMessage.created_at))
+        .limit(limit)
+    )
+
+    result = await session.execute(query)
+    messages = list(result.scalars().all())
+
+    # Если сообщений меньше, чем лимит, то пользователь точно ничего не превысил
+    if len(messages) < limit:
+        return False
+
+    # Если сообщений набралось ровно на лимит, проверяем самое СТАРОЕ из них.
+    # Так как сортировка была по убыванию (desc), самое старое будет последним в списке.
+    oldest_message = messages[-1]
+    
+    now = datetime.now(timezone.utc)
+    last_msg_time = oldest_message.created_at
+    
+
+    if last_msg_time.tzinfo is None:
+        last_msg_time = last_msg_time.replace(tzinfo=timezone.utc)
+
+    elapsed_time = (now - last_msg_time).total_seconds()
+
+    # Если с момента отправки самого старого сообщения прошло МЕНЬШЕ времени,
+    # чем заданный интервал — значит, пользователь исчерпал свой лимит.
+    print(elapsed_time, interval)
+
+    return elapsed_time <= interval
+    
 
 
 async def delete_old_messages(session: AsyncSession, max_age_seconds: int = 604800) -> int:
