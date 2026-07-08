@@ -16,7 +16,7 @@ from app.models.source_yml import SourceYml
 from app.models.system_setting import SystemSetting
 from app import CLIENT_CACHE_DIR
 from app.state import sync_event
-from app.utils.common import get_rag_cache_path
+from app.utils.common import get_rag_cache_path, normalize_answer
 
 def _date_format(value=None):
     if not value:
@@ -198,10 +198,12 @@ def _format_message_text(m):
     if not m.text:
         return ""
     if m.type == MessageType.AI:
+        json_str = normalize_answer(m.text)
         try:
-            parsed = json.loads(m.text)
+            parsed = json.loads(json_str)
             return Markup(f"<pre style='white-space:pre-wrap;margin:0;color:#555;font-size:0.85em;background:#f8f9fa;border-radius:6px;padding:6px'>{json.dumps(parsed, indent=2, ensure_ascii=False)}</pre>")
         except (json.JSONDecodeError, ValueError):
+            #return Markup(f"<pre style='white-space:pre-wrap;margin:0;color:#555;font-size:0.85em;background:#f8f9fa;border-radius:6px;padding:6px'>{json_str}</pre>")
             pass
     text = m.text.replace("\n\n", "<br>").replace("\n", "<br>")
     if m.type == MessageType.HUMAN:
